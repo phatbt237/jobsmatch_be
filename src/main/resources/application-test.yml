@@ -1,0 +1,14 @@
+# Datasource and Redis come from Testcontainers (@ServiceConnection), see TestcontainersConfig.
+app:
+  jwt:
+    secret: test-only-secret-0123456789-0123456789-0123456789
+  bootstrap-admin:
+    email: admin@example.com
+    password: AdminPassw0rd
+  ai:
+    explanation:
+      backoff: 1ms                  # keep retry tests fast
+
+logging:
+  level:
+    vn.career: INFO

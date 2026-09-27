@@ -1,0 +1,71 @@
+# Development stack.
+#   docker compose up -d --wait                  PostgreSQL (pgvector) and Redis; run the app with `mvn spring-boot:run`
+#   docker compose --profile app up -d --build   also builds and runs the app in a container on http://localhost:8080
+#
+# Explicit project name: without it Compose uses the folder name ("backend"), which collides
+# with any other project that also lives in a folder called "backend".
+name: career-backend
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: career-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-career}
+      POSTGRES_USER: ${DB_USERNAME:-career}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-career}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-career} -d ${DB_NAME:-career}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: career-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    profiles: ["app"]
+    build: .
+    container_name: career-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # "dev" is used here so the stack works without secrets; use "prod" and real values for anything public
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-career}
+      DB_USERNAME: ${DB_USERNAME:-career}
+      DB_PASSWORD: ${DB_PASSWORD:-career}
+      REDIS_HOST: redis
+      JWT_SECRET: ${JWT_SECRET:-dev-only-insecure-secret-change-me-0123456789}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-admin@career.local}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-Admin12345}
+      AI_ENABLED: ${AI_ENABLED:-false}
+      AI_PROVIDER: ${AI_PROVIDER:-none}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+volumes:
+  pgdata:

@@ -1,0 +1,26 @@
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/career}
+    username: ${DB_USERNAME:career}
+    password: ${DB_PASSWORD:career}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+app:
+  jwt:
+    # Insecure default for local development only.
+    secret: ${JWT_SECRET:dev-only-insecure-secret-change-me-0123456789}
+  bootstrap-admin:
+    # Dev convenience so Swagger can log in as admin. Prod only creates an admin when these env vars are set.
+    email: ${BOOTSTRAP_ADMIN_EMAIL:admin@career.local}
+    password: ${BOOTSTRAP_ADMIN_PASSWORD:Admin12345}
+
+  ai:
+    rag:
+      index-on-startup: true        # so the chatbot has data right after the first start
+
+logging:
+  level:
+    vn.career: DEBUG

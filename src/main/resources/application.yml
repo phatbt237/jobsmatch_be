@@ -1,0 +1,109 @@
+spring:
+  application:
+    name: career-backend
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate            # schema is owned by Flyway, never by Hibernate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  jackson:
+    time-zone: UTC
+    serialization:
+      write-dates-as-timestamps: false
+  ai:
+    # Real LLM: set AI_ENABLED=true, AI_PROVIDER=openai and OPENAI_API_KEY. Otherwise the fake gateway is used
+    # and Spring AI stays inactive (it would refuse to start without an API key).
+    model:
+      chat: ${AI_PROVIDER:none}
+      embedding: ${AI_PROVIDER:none}
+      image: none
+      moderation: none
+      audio:
+        speech: none
+        transcription: none
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      chat:
+        options:
+          model: ${OPENAI_CHAT_MODEL:gpt-4o-mini}
+      embedding:
+        options:
+          model: ${OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
+          dimensions: 1536
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health            # only the health endpoint is exposed
+  endpoint:
+    health:
+      probes:
+        enabled: true              # /actuator/health/liveness and /readiness
+      show-details: never          # no internal details for anonymous callers
+
+server:
+  port: ${PORT:8080}   # Render (and other PaaS) assign the port via $PORT
+  error:
+    include-message: never
+    include-stacktrace: never
+    include-binding-errors: never
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%X{traceId:-}] %logger{36} - %msg%n"
+
+app:
+  jwt:
+    issuer: career-backend
+    access-token-ttl: 15m
+    refresh-token-ttl: 7d
+  consent:
+    min-age: 16                     # students younger than this need parental consent
+  parent-invite:
+    ttl: 7d
+  login-limit:
+    max-attempts: 5
+    lockout: 15m
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  matching:                         # weights of interest / aptitude / values must add up to 1
+    interest-weight: 0.5
+    aptitude-weight: 0.25
+    values-weight: 0.25
+    budget-penalty: 0.10
+    score-penalty: 0.10
+    score-gap-threshold: 3
+    top-n: 5
+  scoring:
+    min-seconds-per-question: 3
+    attention-fail-threshold: 2
+  catalog:
+    cache-ttl: 1h
+  ai:
+    enabled: ${AI_ENABLED:false}    # false = FakeLlmGateway (no API key needed)
+    embedding-dimensions: 1536      # must match the vector(1536) column and the embedding model
+    explanation:
+      max-attempts: 3               # one try plus two retries
+      backoff: 500ms
+    chat:
+      messages-per-hour: 20
+      history-size: 10
+    rag:
+      top-k: 5
+      chunk-tokens: 500
+      overlap-tokens: 50
+      min-similarity: 0.0           # raise (for example 0.2) with a real embedding model to drop weak matches
+      index-on-startup: false       # true in dev: builds the index when it is empty
