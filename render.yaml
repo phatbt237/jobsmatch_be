@@ -1,0 +1,49 @@
+# Render Blueprint: deploy with "New +" -> "Blueprint", point it at this repo.
+# Render will create the web service + a free Key Value (Redis) instance, and show an
+# input form for every "sync: false" variable below (DB_URL, OPENAI_API_KEY, ...).
+# JWT_SECRET is generated automatically. REDIS_HOST/REDIS_PORT are wired to the Key
+# Value instance automatically, no manual copy-paste needed.
+
+services:
+  - type: web
+    name: jobsmatch-be
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: DB_URL
+        sync: false     # jdbc:postgresql://<host>/<db>?sslmode=require (Neon: no channelBinding param)
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: REDIS_HOST
+        fromService:
+          type: keyvalue
+          name: jobsmatch-redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          type: keyvalue
+          name: jobsmatch-redis
+          property: port
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false     # the deployed frontend's origin, e.g. https://jobsmatch.onrender.com
+      - key: AI_ENABLED
+        value: "true"
+      - key: AI_PROVIDER
+        value: openai
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_CHAT_MODEL
+        value: gpt-4o-mini
+      - key: OPENAI_EMBEDDING_MODEL
+        value: text-embedding-3-small
+
+  - type: keyvalue
+    name: jobsmatch-redis
+    plan: free
+    ipAllowList:
+      - source: 0.0.0.0/0
